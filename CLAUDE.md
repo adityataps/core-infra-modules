@@ -9,6 +9,7 @@ modules/
   aws/        # AWS Terraform modules
   gcp/        # GCP Terraform modules
 scripts/
+  setup_hooks.sh     # Installs pre-commit hooks and verifies required tooling
   create_module.sh   # Scaffolds a new module directory
 ```
 
@@ -32,6 +33,12 @@ Each module lives under `modules/<provider>/<module-name>/` and should be self-c
 ## Common commands
 
 ```bash
+# Install hooks (run once after cloning)
+./scripts/setup_hooks.sh
+
+# Scaffold a new module
+./scripts/create_module.sh -p <provider> -n <module-name> -t "<Title>" -d "<description>"
+
 # Format all Terraform files
 terraform fmt -recursive
 
@@ -41,8 +48,8 @@ terraform -chdir=modules/aws/<module-name> validate
 # Initialize a module (for local testing)
 terraform -chdir=modules/aws/<module-name> init
 
-# Scaffold a new module
-./scripts/create_module.sh <provider> <module-name>
+# Run all pre-commit hooks against the whole repo
+pre-commit run --all-files
 ```
 
 ## What NOT to do

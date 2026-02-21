@@ -8,14 +8,10 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODULES_DIR="$REPO_ROOT/modules"
 
-# ── colours ──────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-RESET='\033[0m'
+# shellcheck source=scripts/lib/helpers.sh
+source "$REPO_ROOT/scripts/lib/helpers.sh"
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# ── script-local helpers ──────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 ${BOLD}Usage:${RESET}
@@ -35,7 +31,6 @@ ${BOLD}Example:${RESET}
 EOF
 }
 
-die()    { echo -e "${RED}Error:${RESET} $*" >&2; exit 1; }
 info()   { echo -e "  ${GREEN}create${RESET}  $*"; }
 
 prompt() {
