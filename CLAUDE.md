@@ -15,6 +15,20 @@ scripts/
 
 Each module lives under `modules/<provider>/<module-name>/` and should be self-contained with its own `variables.tf`, `outputs.tf`, `main.tf`, and `README.md`.
 
+## Git workflow
+
+- **Never commit directly to `main`** — all changes go through a branch and PR.
+- Branch names should be descriptive and kebab-case (e.g. `feat/s3-static-site`, `fix/validate-hook`).
+- PRs are the unit of changelog — each PR title must follow **Conventional Commits**:
+  - `feat:` — new module or feature
+  - `fix:` — bug fix
+  - `chore:` — maintenance, tooling, dependency updates
+  - `docs:` — documentation only
+  - `refactor:` — code change that neither fixes a bug nor adds a feature
+  - `test:` — adding or updating tests
+  - Include a scope in parentheses where helpful, e.g. `feat(aws/s3-static-site): add versioning support`
+- Squash-merge PRs into `main` so each merge commit carries the conventional commit message.
+
 ## Conventions
 
 - **Provider directories**: `aws` and `gcp` are the only top-level providers under `modules/`.
