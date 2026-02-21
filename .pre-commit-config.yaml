@@ -1,0 +1,17 @@
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1
+    hooks:
+      # Rewrites all Terraform files to canonical format.
+      - id: terraform_fmt
+
+      # Validates all Terraform configurations (runs terraform init -backend=false first).
+      - id: terraform_validate
+
+      # Injects auto-generated docs between <!-- BEGIN_TF_DOCS --> and <!-- END_TF_DOCS -->
+      # markers in each module's README.md.
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=false

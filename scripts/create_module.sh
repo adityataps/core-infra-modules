@@ -8,14 +8,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODULES_DIR="$REPO_ROOT/modules"
 
-# ── colours ────────────────────────────────────────────────────────────────
+# ── colours ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-# ── helpers ─────────────────────────────────────────────────────────────────
+# ── helpers ───────────────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 ${BOLD}Usage:${RESET}
@@ -35,7 +35,8 @@ ${BOLD}Example:${RESET}
 EOF
 }
 
-die() { echo -e "${RED}Error:${RESET} $*" >&2; exit 1; }
+die()    { echo -e "${RED}Error:${RESET} $*" >&2; exit 1; }
+info()   { echo -e "  ${GREEN}create${RESET}  $*"; }
 
 prompt() {
   local var_name="$1"
@@ -47,10 +48,11 @@ prompt() {
 }
 
 validate_name() {
-  [[ "$1" =~ ^[a-z][a-z0-9-]*$ ]] || die "Module name must be kebab-case (lowercase letters, digits, hyphens) and start with a letter. Got: '$1'"
+  [[ "$1" =~ ^[a-z][a-z0-9-]*$ ]] || \
+    die "Must be kebab-case (lowercase letters, digits, hyphens), starting with a letter. Got: '$1'"
 }
 
-# ── argument parsing ────────────────────────────────────────────────────────
+# ── argument parsing ──────────────────────────────────────────────────────────
 PROVIDER=""
 NAME=""
 TITLE=""
@@ -67,65 +69,155 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ── interactive prompts for missing values ──────────────────────────────────
+# ── interactive prompts for missing values ────────────────────────────────────
 echo ""
 echo -e "${BOLD}=== Create a new Terraform module ===${RESET}"
 echo ""
 
-[[ -z "$PROVIDER" ]]     && PROVIDER="$(prompt "provider" "Cloud provider (e.g. aws, gcp)")"
-[[ -z "$NAME" ]]         && NAME="$(prompt "name" "Module name in kebab-case (e.g. s3-static-site)")"
-[[ -z "$TITLE" ]]        && TITLE="$(prompt "title" "Display name (e.g. S3 Static Site)")"
-[[ -z "$DESCRIPTION" ]]  && DESCRIPTION="$(prompt "description" "Short description")"
+[[ -z "$PROVIDER" ]]    && PROVIDER="$(prompt "provider" "Cloud provider (e.g. aws, gcp)")"
+[[ -z "$NAME" ]]        && NAME="$(prompt "name" "Module name in kebab-case (e.g. s3-static-site)")"
+[[ -z "$TITLE" ]]       && TITLE="$(prompt "title" "Display name (e.g. S3 Static Site)")"
+[[ -z "$DESCRIPTION" ]] && DESCRIPTION="$(prompt "description" "Short description")"
 
-# ── validation ──────────────────────────────────────────────────────────────
+# ── validation ────────────────────────────────────────────────────────────────
 PROVIDER="$(echo "$PROVIDER" | tr '[:upper:]' '[:lower:]')"
 NAME="$(echo "$NAME" | tr '[:upper:]' '[:lower:]')"
 
-validate_name "$NAME"
 validate_name "$PROVIDER"
+validate_name "$NAME"
 
 MODULE_DIR="$MODULES_DIR/$PROVIDER/$NAME"
 
 [[ -d "$MODULE_DIR" ]] && die "Module already exists at: $MODULE_DIR"
 
-# ── scaffold ─────────────────────────────────────────────────────────────────
+# ── scaffold ──────────────────────────────────────────────────────────────────
 mkdir -p "$MODULE_DIR"
+mkdir -p "$MODULE_DIR/tests"
+mkdir -p "$MODULE_DIR/examples/basic"
 
-# main.tf
-cat > "$MODULE_DIR/main.tf" <<TFEOF
+# ── versions.tf ───────────────────────────────────────────────────────────────
+cat > "$MODULE_DIR/versions.tf" <<TFEOF
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.6.0"
 
   required_providers {
-    # TODO: pin the provider version
+    # TODO: uncomment and pin the provider version
     # $PROVIDER = {
     #   source  = "hashicorp/$PROVIDER"
     #   version = "~> X.Y"
     # }
   }
 }
+TFEOF
+info "$NAME/versions.tf"
 
+# ── main.tf ───────────────────────────────────────────────────────────────────
+cat > "$MODULE_DIR/main.tf" <<TFEOF
 # ---------------------------------------------------------------------------
 # $TITLE
 # $DESCRIPTION
 # ---------------------------------------------------------------------------
 TFEOF
+info "$NAME/main.tf"
 
-# variables.tf
+# ── variables.tf ──────────────────────────────────────────────────────────────
 cat > "$MODULE_DIR/variables.tf" <<TFEOF
 # ---------------------------------------------------------------------------
 # Input variables for the $TITLE module
 # ---------------------------------------------------------------------------
-TFEOF
 
-# outputs.tf
+# variable "example" {
+#   description = "An example variable."
+#   type        = string
+# }
+TFEOF
+info "$NAME/variables.tf"
+
+# ── outputs.tf ────────────────────────────────────────────────────────────────
 cat > "$MODULE_DIR/outputs.tf" <<TFEOF
 # ---------------------------------------------------------------------------
 # Outputs for the $TITLE module
 # ---------------------------------------------------------------------------
-TFEOF
 
-# README.md
+# output "example" {
+#   description = "An example output."
+#   value       = resource_type.example.id
+# }
+TFEOF
+info "$NAME/outputs.tf"
+
+# ── locals.tf ─────────────────────────────────────────────────────────────────
+cat > "$MODULE_DIR/locals.tf" <<TFEOF
+# ---------------------------------------------------------------------------
+# Local values for the $TITLE module
+# ---------------------------------------------------------------------------
+
+locals {
+  module_name = "$NAME"
+
+  # common_tags = {
+  #   module    = "$NAME"
+  #   provider  = "$PROVIDER"
+  #   managed   = "terraform"
+  # }
+}
+TFEOF
+info "$NAME/locals.tf"
+
+# ── tests/<name>.tftest.hcl ───────────────────────────────────────────────────
+cat > "$MODULE_DIR/tests/${NAME}.tftest.hcl" <<TFEOF
+# ---------------------------------------------------------------------------
+# Native Terraform tests for the $TITLE module
+# Run with: terraform test
+# Docs: https://developer.hashicorp.com/terraform/language/tests
+# ---------------------------------------------------------------------------
+
+# variables {
+#   example = "test-value"
+# }
+
+# run "plan_succeeds" {
+#   command = plan
+#
+#   assert {
+#     condition     = <RESOURCE>.<NAME>.<ATTR> == "expected"
+#     error_message = "Expected <ATTR> to equal 'expected'."
+#   }
+# }
+TFEOF
+info "$NAME/tests/${NAME}.tftest.hcl"
+
+# ── examples/basic/versions.tf ───────────────────────────────────────────────
+cat > "$MODULE_DIR/examples/basic/versions.tf" <<TFEOF
+terraform {
+  required_version = ">= 1.6.0"
+
+  required_providers {
+    # TODO: mirror provider pins from the module's versions.tf
+    # $PROVIDER = {
+    #   source  = "hashicorp/$PROVIDER"
+    #   version = "~> X.Y"
+    # }
+  }
+}
+TFEOF
+info "$NAME/examples/basic/versions.tf"
+
+# ── examples/basic/main.tf ───────────────────────────────────────────────────
+cat > "$MODULE_DIR/examples/basic/main.tf" <<TFEOF
+# ---------------------------------------------------------------------------
+# Basic example — $TITLE
+# ---------------------------------------------------------------------------
+
+module "$NAME" {
+  source = "../../"
+
+  # TODO: populate required variables
+}
+TFEOF
+info "$NAME/examples/basic/main.tf"
+
+# ── README.md ─────────────────────────────────────────────────────────────────
 cat > "$MODULE_DIR/README.md" <<MDEOF
 # $TITLE
 
@@ -141,18 +233,22 @@ module "$NAME" {
 }
 \`\`\`
 
-## Inputs
+## Examples
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
+- [Basic](./examples/basic/)
 
-## Outputs
+<!-- BEGIN_TF_DOCS -->
+<!-- END_TF_DOCS -->
 
-| Name | Description |
-|------|-------------|
+## Testing
+
+\`\`\`bash
+terraform -chdir=modules/$PROVIDER/$NAME test
+\`\`\`
 MDEOF
+info "$NAME/README.md"
 
-# ── done ─────────────────────────────────────────────────────────────────────
+# ── done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}Module scaffolded successfully!${RESET}"
 echo ""
@@ -160,9 +256,4 @@ echo -e "  ${BOLD}Provider:${RESET}    $PROVIDER"
 echo -e "  ${BOLD}Name:${RESET}        $NAME"
 echo -e "  ${BOLD}Title:${RESET}       $TITLE"
 echo -e "  ${BOLD}Location:${RESET}    modules/$PROVIDER/$NAME/"
-echo ""
-echo -e "Files created:"
-for f in main.tf variables.tf outputs.tf README.md; do
-  echo "  modules/$PROVIDER/$NAME/$f"
-done
 echo ""
